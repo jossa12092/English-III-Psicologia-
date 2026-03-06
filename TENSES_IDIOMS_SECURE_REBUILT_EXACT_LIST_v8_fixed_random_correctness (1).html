@@ -1,0 +1,553 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+<title>Secure Quiz • Tenses + Idioms</title>
+<style>
+:root {
+  --green:#40B070; --orange:#F09010; --bg1:#0b1220; --bg2:#050814;
+  --card:rgba(255,255,255,.07); --border:rgba(255,255,255,.12);
+  --text:#e5e7eb; --muted:#cbd5e1;
+}
+html,body{height:100%;margin:0;overflow:hidden;background:
+  radial-gradient(1200px 600px at 20% 10%, rgba(64,176,112,.22), transparent 60%),
+  radial-gradient(1000px 700px at 90% 30%, rgba(240,144,16,.18), transparent 55%),
+  linear-gradient(180deg,var(--bg1),var(--bg2));
+  color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;}
+.wrap{height:100%;display:flex;align-items:center;justify-content:center;padding:14px;box-sizing:border-box;}
+.app{width:min(1200px,100%);}
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;}
+.badge{background:linear-gradient(90deg, rgba(64,176,112,.35), rgba(240,144,16,.30));border:1px solid var(--border);
+  padding:6px 10px;border-radius:999px;font-weight:900;}
+.pills{display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
+.pill{display:inline-flex;gap:8px;align-items:center;padding:6px 10px;border-radius:999px;
+  background:rgba(0,0,0,.25);border:1px solid rgba(255,255,255,.10);font-size:12px;color:var(--muted);}
+.stage{position:relative;height:min(900px,86vh);background:linear-gradient(180deg, rgba(17,24,39,.82), rgba(17,24,39,.55));
+  border:1px solid var(--border);border-radius:18px;overflow:hidden;box-shadow:0 22px 60px rgba(0,0,0,.45);}
+canvas{position:absolute;inset:0;width:100%;height:100%;}
+.ui{position:absolute;inset:0;padding:16px;box-sizing:border-box;display:none;overflow:auto;}
+.ui.active{display:block;}
+.card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:14px;margin-top:42px;}
+.h1{font-size:22px;font-weight:900;margin:0 0 6px 0;}
+.p{margin:0 0 10px 0;color:var(--muted);line-height:1.35;}
+label{display:block;font-size:13px;color:var(--muted);margin:10px 0 6px;}
+input[type="password"]{width:100%;padding:12px;border-radius:12px;border:1px solid rgba(255,255,255,.14);
+  background:rgba(0,0,0,.25);color:var(--text);outline:none;}
+button{cursor:pointer;border:0;border-radius:14px;padding:12px 14px;font-weight:900;}
+
+button:disabled{opacity:.45;cursor:not-allowed;filter:saturate(.7);}
+.qLocked .opt{pointer-events:none;}
+.qLocked select{pointer-events:none;}
+
+.btnPrimary{background:linear-gradient(90deg,var(--green),var(--orange));color:#0b1220;}
+.btnGhost{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);color:var(--text);}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;}
+.context{white-space:pre-wrap;background:rgba(0,0,0,.18);border:1px solid rgba(255,255,255,.10);border-radius:12px;padding:10px;margin:8px 0;}
+.opt{display:flex;align-items:flex-start;gap:10px;padding:10px;border-radius:12px;border:1px solid rgba(255,255,255,.10);
+  background:rgba(255,255,255,.05);margin:8px 0;}
+.opt.locked{opacity:.75;pointer-events:none;}
+
+.opt.correct{background:rgba(34,197,94,.18);border-color:rgba(34,197,94,.45);}
+.opt.wrong{background:rgba(239,68,68,.16);border-color:rgba(239,68,68,.45);}
+
+.opt input{margin-top:3px;}
+.qTitle{font-weight:900;font-size:16px;margin:0 0 8px;}
+select{width:100%;padding:10px;border-radius:12px;border:1px solid rgba(255,255,255,.14);background:rgba(0,0,0,.25);
+  color:var(--text);outline:none;appearance:auto;}
+select, option, optgroup{color:#111827 !important;background:#ffffff !important;}
+.small{font-size:12px;color:var(--muted);white-space:pre-wrap;}
+.inlineTimer{margin-top:8px;display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border-radius:999px;background:rgba(0,0,0,.28);border:1px solid rgba(255,255,255,.12);font-size:12px;color:var(--muted);} 
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+@media (max-width:780px){ .grid2{grid-template-columns:1fr;} }
+.lockscreen{position:absolute;inset:0;background:rgba(0,0,0,.82);display:none;align-items:center;justify-content:center;padding:18px;box-sizing:border-box;}
+.lockscreen.active{display:flex;}
+.lockcard{max-width:780px;width:100%;background:rgba(17,24,39,.95);border:1px solid rgba(239,68,68,.35);border-radius:18px;padding:16px;}
+.warn{color:#fecaca;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="app">
+    <div class="topbar">
+      <div class="badge">Tenses + Idioms • Secure Quiz</div>
+      <div class="pills">
+        <div class="pill" id="timerPill">Time: --:--</div>
+        <div class="pill" id="metaPill">Not started</div>
+      </div>
+    </div>
+
+    <div class="stage">
+      <canvas id="cv"></canvas>
+
+      <div class="ui active" id="uiCode">
+        <div class="card">
+          <p class="h1">Access Code</p>
+          <p class="p">Enter the code to start.</p>
+          <label>Code</label>
+          <input id="codeInput" type="password" inputmode="numeric" autocomplete="off" placeholder="Enter access code"/>
+          <div class="toolbar"><button class="btnPrimary" id="btnUnlock">Enter</button></div>
+          <div class="small">Bank: 80 • Attempt: 25 random • Time per question: 2:30</div>
+        </div>
+      </div>
+
+      <div class="ui" id="uiStart">
+        <div class="card">
+          <p class="h1">Instructions</p>
+          <p class="p">
+            • Each attempt draws <b>25 random questions</b> from the bank of <b>80</b>.<br/>
+            • If you leave the tab/window, the quiz locks immediately. The current question counts as wrong. Re-enter the code to continue and the quiz advances automatically.
+          </p>
+          <div class="toolbar"><button class="btnPrimary" id="btnStart">Start</button></div>
+        </div>
+      </div>
+
+      <div class="ui" id="uiQuiz">
+        <div class="card">
+          <div class="toolbar" style="justify-content:space-between;">
+            <div class="pill" id="qPill">Q</div>
+            <div class="pill" id="securityPill">Security: OK</div>
+          </div>
+          <div id="qbox" style="margin-top:10px;"></div>
+          <div class="toolbar">
+            <button class="btnPrimary" id="btnConfirm">Check answers</button>
+            <button class="btnGhost" id="btnNext">Next question</button>
+          </div>
+          <div class="small">After checking, your answer is locked.</div>
+        </div>
+      </div>
+
+      <div class="ui" id="uiResults">
+        <div class="card">
+          <p class="h1">Results</p>
+          <div class="grid2">
+            <div class="card" style="margin-top:0;background:rgba(240,144,16,.08);border-color:rgba(240,144,16,.24)">
+              <p class="h1" style="font-size:18px;margin:0 0 6px;">Final Grade</p>
+              <p class="p" id="finalGrade" style="font-size:22px;font-weight:900;margin:0;"></p>
+              <p class="small" id="finalMeta"></p>
+            </div>
+            <div class="card" style="margin-top:0;">
+              <p class="h1" style="font-size:16px;margin-bottom:8px;">Security Log</p>
+              <div class="small" id="securityLog">No incidents.</div>
+            </div>
+          </div>
+          <div class="toolbar"><button class="btnPrimary" id="btnRestart">Restart</button></div>
+        </div>
+      </div>
+
+      <div class="lockscreen" id="lockscreen">
+        <div class="lockcard">
+          <p class="h1 warn">Security Check</p>
+          <p class="p warn" id="lockReason">Re-enter the access code to continue.</p>
+          <label>Access code</label>
+          <input id="resumeCodeInput" type="password" inputmode="numeric" autocomplete="off" placeholder="Enter access code"/>
+          <div class="toolbar">
+            <button class="btnPrimary" id="btnResume">Continue</button>
+            <button class="btnGhost" id="btnRestart2">Restart</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+const DATA = {"access_code": "2025", "question_seconds": 150, "sample_size": 25, "question_bank": [{"type": "idioms_match", "level": "A1+", "skill": "Idioms (matching)", "stem": "Match each idiom with its meaning. (A1+ meanings)", "pairs": [{"idiom": "Hold your horses", "meaning": "Wait. Be patient."}, {"idiom": "Out of sight, out of mind", "meaning": "If you don’t see it, you forget it."}, {"idiom": "Cut to the chase", "meaning": "Say the main point quickly."}, {"idiom": "Hand to God", "meaning": "I promise it’s true."}, {"idiom": "Make yourself at home", "meaning": "Relax and feel comfortable here."}, {"idiom": "You are in hot water", "meaning": "You are in trouble."}, {"idiom": "I am on cloud nine", "meaning": "I am very happy."}, {"idiom": "Miss the boat", "meaning": "Be too late and lose a chance."}, {"idiom": "What’s the catch?", "meaning": "What is the hidden problem?"}, {"idiom": "Now we’re even", "meaning": "We are equal now. No debt."}, {"idiom": "Easy come, easy go", "meaning": "If you get it easily, you can lose it easily."}, {"idiom": "The apple doesn’t fall far from the tree", "meaning": "Kids are often like their parents."}, {"idiom": "The early bird catches the worm", "meaning": "Start early to get an advantage."}, {"idiom": "Piece of cake", "meaning": "Very easy."}, {"idiom": "Speak of the devil", "meaning": "The person appears when you talk about them."}, {"idiom": "No pain, no gain", "meaning": "No effort, no results."}, {"idiom": "I am blue", "meaning": "I am sad."}, {"idiom": "Bad apple", "meaning": "A person who causes problems in a group."}, {"idiom": "Shape up", "meaning": "Improve your behavior or performance."}, {"idiom": "Hit the sack", "meaning": "Go to bed."}]}, {"type": "gap", "level": "A2", "skill": "Fill the gap", "stem": "Every morning, Daniela ___ the bus at 7:10.", "options": ["catch", "catches", "is catching", "caught"], "answer": 1}, {"type": "gap", "level": "A2", "skill": "Fill the gap", "stem": "Right now, my classmates ___ for the presentation.", "options": ["practice", "practiced", "are practicing", "practices"], "answer": 2}, {"type": "gap", "level": "A2", "skill": "Fill the gap", "stem": "Yesterday, I ___ my keys in the classroom.", "options": ["leave", "left", "am leaving", "leaves"], "answer": 1}, {"type": "gap", "level": "A2", "skill": "Fill the gap", "stem": "At 6 p.m. yesterday, we ___ in line for the concert.", "options": ["waited", "were waiting", "are waiting", "wait"], "answer": 1}, {"type": "gap", "level": "A2", "skill": "Fill the gap", "stem": "Look at the schedule. We ___ the exam on Friday.", "options": ["will take", "are going to take", "took", "take"], "answer": 1}, {"type": "gap", "level": "A2", "skill": "Fill the gap", "stem": "I think the teacher ___ happy with our project.", "options": ["is going to be", "will be", "was", "is being"], "answer": 1}, {"type": "gap", "level": "A2", "skill": "Fill the gap", "stem": "Silvia usually ___ coffee, but today she ___ orange juice.", "options": ["drinks / drinks", "drinks / is drinking", "is drinking / drinks", "drank / drinks"], "answer": 1}, {"type": "gap", "level": "A2", "skill": "Fill the gap", "stem": "While I ___ to the library, I ___ an old friend.", "options": ["walked / saw", "was walking / saw", "was walking / was seeing", "walk / see"], "answer": 1}, {"type": "gap", "level": "A2", "skill": "Fill the gap", "stem": "My father ___ in a bank.", "options": ["work", "works", "is working", "worked"], "answer": 1}, {"type": "gap", "level": "A2", "skill": "Fill the gap", "stem": "Listen! The baby ___.", "options": ["cry", "cries", "is crying", "cried"], "answer": 2}, {"type": "gap", "level": "A2", "skill": "Fill the gap", "stem": "Last Saturday, we ___ volleyball in the park.", "options": ["play", "played", "are playing", "plays"], "answer": 1}, {"type": "gap", "level": "A2", "skill": "Fill the gap", "stem": "At midnight, I ___ when the noise started.", "options": ["slept", "was sleeping", "sleep", "am sleeping"], "answer": 1}, {"type": "gap", "level": "A2", "skill": "Fill the gap", "stem": "Don’t worry— I ___ you after class.", "options": ["am going to call", "will call", "called", "call"], "answer": 1}, {"type": "gap", "level": "A2", "skill": "Fill the gap", "stem": "He bought paint because he ___ his room tomorrow.", "options": ["will paint", "is going to paint", "paints", "painted"], "answer": 1}, {"type": "gap", "level": "A2", "skill": "Fill the gap", "stem": "They never ___ late to meetings.", "options": ["arrive", "arrives", "arriving", "arrived"], "answer": 0}, {"type": "gap", "level": "A2", "skill": "Fill the gap", "stem": "At the moment, the team ___ a new app.", "options": ["builds", "built", "is building", "build"], "answer": 2}, {"type": "gap", "level": "A2", "skill": "Fill the gap", "stem": "I ___ a message, but nobody replied.", "options": ["send", "sent", "am sending", "sends"], "answer": 1}, {"type": "gap", "level": "A2", "skill": "Fill the gap", "stem": "At 3 p.m. yesterday, the doctor ___ a patient.", "options": ["saw", "was seeing", "sees", "is seeing"], "answer": 1}, {"type": "gap", "level": "A2", "skill": "Fill the gap", "stem": "Look! The glass is moving— it ___ fall!", "options": ["will", "is going to", "fell", "falls"], "answer": 1}, {"type": "gap", "level": "A2", "skill": "Fill the gap", "stem": "I think our team ___ the final.", "options": ["is going to win", "will win", "won", "wins"], "answer": 1}, {"type": "dialogue", "level": "A2", "skill": "Conversation", "context": "A: What do you do after work?\nB: I ___ home and ___ dinner.", "stem": "Choose the best option.", "options": ["go / cook", "goes / cooks", "go / cooks", "am going / cook"], "answer": 2}, {"type": "dialogue", "level": "A2", "skill": "Conversation", "context": "A: Where’s Kevin?\nB: He ___ in the gym right now.", "stem": "Choose the best option.", "options": ["trains", "is training", "trained", "was training"], "answer": 1}, {"type": "dialogue", "level": "A2", "skill": "Conversation", "context": "A: Why are you late today?\nB: I ___ my phone, so I couldn’t call you.", "stem": "Choose the best option.", "options": ["lose", "lost", "was losing", "am losing"], "answer": 1}, {"type": "dialogue", "level": "A2", "skill": "Conversation", "context": "A: What were you doing at 9 last night?\nB: I ___ with my sister on the phone.", "stem": "Choose the best option.", "options": ["talked", "was talking", "am talking", "talk"], "answer": 1}, {"type": "dialogue", "level": "A2", "skill": "Conversation", "context": "A: The floor is wet.\nB: Yes, someone ___ water.", "stem": "Choose the best option.", "options": ["will spill", "is going to spill", "spilled", "spills"], "answer": 1}, {"type": "dialogue", "level": "A2", "skill": "Conversation", "context": "A: I forgot my notebook.\nB: No problem. I ___ lend you mine.", "stem": "Choose the best option.", "options": ["am going to", "will", "was going to", "going"], "answer": 1}, {"type": "dialogue", "level": "A2", "skill": "Conversation", "context": "A: Are you free tomorrow afternoon?\nB: I can’t. I ___ my dentist.", "stem": "Choose the best option.", "options": ["visit", "am visiting", "visited", "will visit"], "answer": 1}, {"type": "dialogue", "level": "A2", "skill": "Conversation", "context": "A: What happened when the lights went out?\nB: Everyone ___ and looked around.", "stem": "Choose the best option.", "options": ["screams", "screamed", "is screaming", "was screaming"], "answer": 1}, {"type": "dialogue", "level": "A2", "skill": "Conversation", "context": "A: Why didn’t you answer the door?\nB: I ___ a shower when you knocked.", "stem": "Choose the best option.", "options": ["took", "was taking", "am taking", "take"], "answer": 1}, {"type": "dialogue", "level": "A2", "skill": "Conversation", "context": "A: Do you think the exam is difficult?\nB: No, it ___ easy.", "stem": "Choose the best option.", "options": ["is going to be", "will be", "was", "is being"], "answer": 1}, {"type": "dialogue", "level": "A2", "skill": "Conversation", "context": "A: Why is Mariana smiling?\nB: She ___ great news right now.", "stem": "Choose the best option.", "options": ["gets", "is getting", "got", "was getting"], "answer": 1}, {"type": "dialogue", "level": "A2", "skill": "Conversation", "context": "A: What do you usually eat for breakfast?\nB: I ___ eggs and fruit.", "stem": "Choose the best option.", "options": ["eat", "am eating", "ate", "was eating"], "answer": 0}, {"type": "dialogue", "level": "A2", "skill": "Conversation", "context": "A: Where are the kids?\nB: They ___ outside at the moment.", "stem": "Choose the best option.", "options": ["play", "are playing", "played", "plays"], "answer": 1}, {"type": "dialogue", "level": "A2", "skill": "Conversation", "context": "A: What did you do last weekend?\nB: I ___ my cousins in Pasto.", "stem": "Choose the best option.", "options": ["visit", "visited", "am visiting", "visits"], "answer": 1}, {"type": "dialogue", "level": "A2", "skill": "Conversation", "context": "A: Why was the teacher angry?\nB: We ___ while she was explaining.", "stem": "Choose the best option.", "options": ["talk", "talked", "were talking", "are talking"], "answer": 2}, {"type": "dialogue", "level": "A2", "skill": "Conversation", "context": "A: Look at the line!\nB: Yeah… We ___ a long time.", "stem": "Choose the best option.", "options": ["wait", "waited", "are going to wait", "are waiting"], "answer": 3}, {"type": "dialogue", "level": "A2", "skill": "Conversation", "context": "A: I’m cold.\nB: I ___ close the window.", "stem": "Choose the best option.", "options": ["am going to", "will", "was going to", "going"], "answer": 1}, {"type": "dialogue", "level": "A2", "skill": "Conversation", "context": "A: What happened when you arrived?\nB: The movie already ___.", "stem": "Choose the best option.", "options": ["starts", "started", "was starting", "is starting"], "answer": 1}, {"type": "dialogue", "level": "A2", "skill": "Conversation", "context": "A: Why didn’t you see my message?\nB: Sorry, I ___ during class.", "stem": "Choose the best option.", "options": ["sleep", "slept", "was sleeping", "am sleeping"], "answer": 2}, {"type": "dialogue", "level": "A2", "skill": "Conversation", "context": "A: Are you going to join the club?\nB: Yes, I ___ tomorrow.", "stem": "Choose the best option.", "options": ["will sign up", "am going to sign up", "signed up", "sign up"], "answer": 1}, {"type": "mcq", "level": "A2", "skill": "Multiple choice", "stem": "Choose the best sentence for a routine.", "options": ["She is going to work every day.", "She works every day.", "She worked every day now.", "She is working every day yesterday."], "answer": 1}, {"type": "mcq", "level": "A2", "skill": "Multiple choice", "stem": "Choose the best sentence for “right now.”", "options": ["I study now.", "I am studying now.", "I studied now.", "I will studying now."], "answer": 1}, {"type": "mcq", "level": "A2", "skill": "Multiple choice", "stem": "Choose the best sentence about yesterday.", "options": ["We go to the mall yesterday.", "We went to the mall yesterday.", "We are going yesterday.", "We goes yesterday."], "answer": 1}, {"type": "mcq", "level": "A2", "skill": "Multiple choice", "stem": "Choose the best sentence for “in progress at 8 p.m. yesterday.”", "options": ["They watched TV.", "They were watching TV.", "They are watching TV.", "They watch TV."], "answer": 1}, {"type": "mcq", "level": "A2", "skill": "Multiple choice", "stem": "Choose the correct question to ask about now.", "options": ["Do you working?", "Are you working?", "Did you work?", "Were you work?"], "answer": 1}, {"type": "mcq", "level": "A2", "skill": "Multiple choice", "stem": "Choose the correct question to ask about yesterday.", "options": ["Did you go?", "Do you went?", "Are you go?", "Were you went?"], "answer": 0}, {"type": "mcq", "level": "A2", "skill": "Multiple choice", "stem": "Choose the best negative sentence about a general fact.", "options": ["He don’t like math.", "He doesn’t like math.", "He isn’t like math.", "He didn’t likes math."], "answer": 1}, {"type": "mcq", "level": "A2", "skill": "Multiple choice", "stem": "Choose the best negative sentence for “right now.”", "options": ["They doesn’t study now.", "They aren’t studying now.", "They didn’t studying now.", "They not studying now."], "answer": 1}, {"type": "mcq", "level": "A2", "skill": "Multiple choice", "stem": "Choose the sentence based on evidence you can see.", "options": ["I think she will pass.", "She is going to pass—she studied all week and her notes are ready.", "She passed last year.", "She passes every class."], "answer": 1}, {"type": "mcq", "level": "A2", "skill": "Multiple choice", "stem": "Choose the sentence that is only an opinion.", "options": ["Look! It’s going to rain.", "I think it will rain later.", "It’s raining right now.", "It rained yesterday."], "answer": 1}, {"type": "mcq", "level": "A2", "skill": "Multiple choice", "stem": "Choose the correct structure.", "options": ["will + base verb", "will + to verb", "will + -ing", "will + past verb"], "answer": 0}, {"type": "mcq", "level": "A2", "skill": "Multiple choice", "stem": "Choose the correct structure.", "options": ["going to + base verb", "going to + past verb", "going + base verb", "going + to + past"], "answer": 0}, {"type": "mcq", "level": "A2", "skill": "Multiple choice", "stem": "Choose the best response (quick decision).\nA: “I’m hungry.”\nB: “I ___ make a sandwich.”", "options": ["am going to", "will", "was going to", "going"], "answer": 1}, {"type": "mcq", "level": "A2", "skill": "Multiple choice", "stem": "Choose the best sentence for an arranged plan.", "options": ["I meet my friend at 6.", "I am meeting my friend at 6.", "I met my friend at 6.", "I will meeting my friend at 6."], "answer": 1}, {"type": "mcq", "level": "A2", "skill": "Multiple choice", "stem": "Choose the correct sentence.", "options": ["She are driving.", "She is driving.", "She driving.", "She is drive."], "answer": 1}, {"type": "mcq", "level": "A2", "skill": "Multiple choice", "stem": "Choose the correct sentence.", "options": ["They was laughing.", "They were laughing.", "They are laugh.", "They were laugh."], "answer": 1}, {"type": "mcq", "level": "A2", "skill": "Multiple choice", "stem": "Choose the best option.\n“While I ___, my phone rang.”", "options": ["slept", "was sleeping", "am sleeping", "sleep"], "answer": 1}, {"type": "mcq", "level": "A2", "skill": "Multiple choice", "stem": "Choose the best option.\n“When the teacher arrived, we ___ quiet.”", "options": ["become", "became", "were becoming", "becomes"], "answer": 1}, {"type": "mcq", "level": "A2", "skill": "Multiple choice", "stem": "Choose the best option.\n“Right now, I ___ for my keys.”", "options": ["look", "am looking", "looked", "was looking"], "answer": 1}, {"type": "mcq", "level": "A2", "skill": "Multiple choice", "stem": "Choose the best option.\n“Tomorrow, we ___ visit my aunt. We already planned it.”", "options": ["will", "are going to", "went to", "are"], "answer": 1}, {"type": "gap", "level": "A2", "skill": "Mixed", "stem": "While we ___ (eat), the waiter ___ (bring) the menu.", "options": ["ate / brought", "were eating / brought", "were eating / was bringing", "eat / brings"], "answer": 1}, {"type": "gap", "level": "A2", "skill": "Mixed", "stem": "When I ___ (open) the door, my dog ___ (run) outside.", "options": ["opened / ran", "was opening / ran", "opened / was running", "open / runs"], "answer": 0}, {"type": "gap", "level": "A2", "skill": "Mixed", "stem": "I ___ (study) when my friend ___ (text) me.", "options": ["studied / texted", "was studying / texted", "was studying / was texting", "study / texts"], "answer": 1}, {"type": "gap", "level": "A2", "skill": "Mixed", "stem": "Choose the best option: “Listen! The teacher ___.”", "options": ["explains", "is explaining", "explained", "was explaining"], "answer": 1}, {"type": "gap", "level": "A2", "skill": "Mixed", "stem": "Choose the best option: “My sister ___ to work every day.”", "options": ["go", "goes", "is going", "went"], "answer": 1}, {"type": "gap", "level": "A2", "skill": "Mixed", "stem": "Choose the best option: “At 2 p.m. yesterday, I ___ in class.”", "options": ["was", "am", "were", "be"], "answer": 0}, {"type": "gap", "level": "A2", "skill": "Mixed", "stem": "Choose the best option: “Yesterday, they ___ late.”", "options": ["arrive", "arrived", "are arriving", "arrives"], "answer": 1}, {"type": "gap", "level": "A2", "skill": "Mixed", "stem": "Choose the best option: “Look at the empty fridge! We ___ buy food.”", "options": ["will", "are going to", "went to", "are"], "answer": 1}, {"type": "gap", "level": "A2", "skill": "Mixed", "stem": "Choose the best option: “I think this movie ___ be great.”", "options": ["is going to", "will", "was going to", "is"], "answer": 1}, {"type": "gap", "level": "A2", "skill": "Mixed", "stem": "Fill the gap: “He ___ (not) like loud music.”", "options": ["don’t", "doesn’t", "isn’t", "didn’t"], "answer": 1}, {"type": "gap", "level": "A2", "skill": "Mixed", "stem": "Fill the gap: “They ___ (not) studying right now.”", "options": ["don’t", "aren’t", "didn’t", "doesn’t"], "answer": 1}, {"type": "gap", "level": "A2", "skill": "Mixed", "stem": "Choose the best option: “What ___ you doing now?”", "options": ["do", "are", "did", "were"], "answer": 1}, {"type": "gap", "level": "A2", "skill": "Mixed", "stem": "Choose the best option: “___ you go to the party yesterday?”", "options": ["Do", "Did", "Are", "Were"], "answer": 1}, {"type": "gap", "level": "A2", "skill": "Mixed", "stem": "Fill the gap: “I ___ call you later. (promise)”", "options": ["am going to", "will", "was going to", "going"], "answer": 1}, {"type": "gap", "level": "A2", "skill": "Mixed", "stem": "Fill the gap: “We ___ travel next month. Tickets are ready.”", "options": ["will", "are going to", "traveled", "travel"], "answer": 1}, {"type": "gap", "level": "A2", "skill": "Mixed", "stem": "Choose the best option: “When she arrived, we ___ already ___ dinner.”", "options": ["had / ate", "have / eaten", "were / eating", "is / eating"], "answer": 0}, {"type": "gap", "level": "A2", "skill": "Mixed", "stem": "Choose the best option: “At 7:30 last night, he ___ a report.”", "options": ["wrote", "was writing", "writes", "is writing"], "answer": 1}, {"type": "gap", "level": "A2", "skill": "Mixed", "stem": "Choose the best option: “Every Friday, the club ___ at 5.”", "options": ["meets", "meet", "is meeting", "met"], "answer": 0}, {"type": "gap", "level": "A2", "skill": "Mixed", "stem": "Choose the best option: “Right now, the club ___ a new project.”", "options": ["starts", "is starting", "started", "start"], "answer": 1}]};
+
+// Decorative canvas
+const cv=document.getElementById("cv");
+const ctx=cv.getContext("2d");
+function fit() {
+  const r=cv.getBoundingClientRect();
+  const dpr=Math.max(1, window.devicePixelRatio||1);
+  cv.width=Math.round(r.width*dpr); cv.height=Math.round(r.height*dpr);
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  draw();
+}
+window.addEventListener("resize", fit);
+function draw() {
+  const w=cv.clientWidth, h=cv.clientHeight;
+  ctx.clearRect(0,0,w,h);
+  ctx.globalAlpha=.14; ctx.strokeStyle="rgba(255,255,255,.14)";
+  const step=Math.max(22, Math.floor(Math.min(w,h)/18));
+  for(let x=0;x<w;x+=step){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,h);ctx.stroke();}
+  for(let y=0;y<h;y+=step){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(w,y);ctx.stroke();}
+  ctx.globalAlpha=1;
+  const grad=ctx.createLinearGradient(0,0,w,0);
+  grad.addColorStop(0,"rgba(64,176,112,.22)");
+  grad.addColorStop(1,"rgba(240,144,16,.18)");
+  ctx.fillStyle=grad; ctx.fillRect(0,0,w,Math.max(54,h*0.08));
+  ctx.fillStyle="rgba(255,255,255,.75)";
+  ctx.font="800 14px system-ui, -apple-system, Segoe UI, Roboto, Arial";
+  ctx.fillText("Secure Canvas Assessment", 16, 30);
+  ctx.fillStyle="rgba(255,255,255,.55)";
+  ctx.font="700 12px system-ui, -apple-system, Segoe UI, Roboto, Arial";
+  ctx.fillText("Random 25 from Bank of 80", 16, 48);
+}
+fit();
+
+// Helpers
+const ui={code:uiCode, start:uiStart, quiz:uiQuiz, results:uiResults};
+function show(k){ for(const x in ui) ui[x].classList.remove("active"); ui[k].classList.add("active"); }
+function pad2(n){ return n<10?("0"+n):(""+n); }
+function fmt(sec){ const m=Math.floor(sec/60), s=sec%60; return pad2(m)+":"+pad2(s); }
+function setTimer(sec){
+  const txt = (sec==null) ? "Time: --:--" : ("Time: "+fmt(sec));
+  timerPill.textContent = txt;
+  const inline = document.getElementById("qTimerInline");
+  if(inline) inline.textContent = txt;
+}
+function setMeta(t){ metaPill.textContent=t; }
+function shuffle(a){ a=a.slice(); for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
+function esc(s){ return (s||"").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;"); }
+
+// State
+const S={
+  phase:"code",
+  shuf:{},
+  sel:[],
+  idx:0,
+  ans:{},
+  lock:{},
+  forced:{},
+  t:{id:null,left:0},
+  sec:{started:false,locked:false,inc:[],ignoreUntil:0}
+};
+
+function clearT(){ if(S.t.id){ clearInterval(S.t.id); S.t.id=null; } }
+function startT(){
+  clearT();
+  const q = qEffNow();
+  const base = DATA.question_seconds || 150;
+  const idiomsSec = 13*60; // 13 minutes for idioms task
+  S.t.left = (q && q.type==="idioms_match") ? idiomsSec : base;
+  setTimer(S.t.left);
+  S.t.id=setInterval(()=>{ if(S.sec.locked||S.phase!=="quiz") return; S.t.left--; if(S.t.left<0) S.t.left=0; setTimer(S.t.left);
+    if(S.t.left===0){ forceWrong("Time limit exceeded"); nextQ(true); }
+  },1000);
+}
+
+function pick(){
+  // Always include idioms task (index 0)
+  const total = DATA.question_bank.length;
+  const needed = (DATA.sample_size||25);
+
+  const rest = [];
+  for(let i=1;i<total;i++) rest.push(i);
+
+  const chosen = [0];
+  for(const i of shuffle(rest)){
+    if(chosen.length>=needed) break;
+    chosen.push(i);
+  }
+
+  S.sel = chosen;
+  S.idx=0; S.ans={}; S.lock={}; S.forced={};
+  S.shuf={};
+
+  // Pre-shuffle options per selected question so the correct answer stays correct
+  for(const qi of S.sel){
+    const q = DATA.question_bank[qi];
+    if(!q) continue;
+    if(q.type==="mcq"||q.type==="gap"||q.type==="dialogue"){
+      const perm = shuffle(q.options.map((_,i)=>i));
+      const newOpts = perm.map(i=>q.options[i]);
+      const origCorrect = Number(q.answer);
+      const newCorrect = perm.indexOf(origCorrect);
+      S.shuf[String(qi)] = {options:newOpts, answer:newCorrect};
+    }
+  }
+}
+
+
+function qIndexNow(){ return S.sel[S.idx]; }
+function qEffNow(){
+  const qi = qIndexNow();
+  const q = DATA.question_bank[qi];
+  const sh = S.shuf[String(qi)];
+  if(sh && (q.type==="mcq"||q.type==="gap"||q.type==="dialogue")){
+    // return a shallow copy with shuffled options/answer
+    return Object.assign({}, q, {options: sh.options, answer: sh.answer});
+  }
+  return q;
+}
+function qNow(){ return DATA.question_bank[S.sel[S.idx]]; }
+
+function render(){ 
+  const q=qEffNow();
+  qPill.textContent = "Q "+(S.idx+1)+" / "+S.sel.length+" • "+q.skill;
+  qbox.innerHTML="";
+  qbox.insertAdjacentHTML("beforeend", '<p class="qTitle">'+esc(q.stem)+'</p>');
+  // Inline timer (shown under the question)
+  qbox.insertAdjacentHTML("beforeend", '<div class="inlineTimer" id="qTimerInline">Time: --:--</div>');
+  const key="q"+S.idx;
+  const locked=!!S.lock[key];
+  const saved=S.ans[key];
+
+  // Lock UI controls after checking answers
+  btnConfirm.disabled = locked;
+  qbox.classList.toggle("qLocked", locked);
+
+  if(q.type==="dialogue"){ 
+    const c=document.createElement("div"); c.className="context"; c.textContent=q.context; qbox.appendChild(c);
+  }
+
+  if(q.type==="mcq" || q.type==="gap" || q.type==="dialogue"){ 
+    const group="g_"+key;
+    q.options.forEach((opt,i)=>{
+      const row=document.createElement("label");
+      const correctIdx = (q.answer!==undefined && q.answer!==null) ? Number(q.answer) : null;
+      const chosenIdx = (saved!==undefined) ? Number(saved) : null;
+      let extra="";
+      if(locked && correctIdx!==null){
+        if(i===correctIdx) extra+=" correct";
+        if(chosenIdx===i && i!==correctIdx) extra+=" wrong";
+      }
+      row.className="opt"+(locked?" locked":"")+extra;
+      const r=document.createElement("input"); r.type="radio"; r.name=group; r.value=String(i); r.disabled=locked;
+      if(saved!==undefined && String(saved)===String(i)) r.checked=true;
+      const span=document.createElement("div"); span.innerHTML="<b>"+String.fromCharCode(65+i)+"</b>. "+esc(opt);
+      row.appendChild(r); row.appendChild(span);
+      row.addEventListener("click", ()=>{ if(locked) return; r.checked=true; S.ans[key]=String(i); });
+      qbox.appendChild(row);
+    });
+  }
+
+  if(q.type==="idioms_match") {
+    const pairs=q.pairs;
+    const meanings = pairs.map(p=>p.meaning);
+    const shuffled = shuffle(meanings);
+    const wrap=document.createElement("div");
+    wrap.className="card"; wrap.style.marginTop="10px";
+    wrap.innerHTML='<div class="small">Left: idiom • Right: meaning (A1+). Use dropdowns.</div>';
+    const grid=document.createElement("div");
+    grid.className="grid2";
+    let obj=null;
+    try{ if(saved) obj=JSON.parse(saved); }catch(e){ obj=null; }
+    pairs.forEach((p,idx)=>{
+      const left=document.createElement("div");
+      left.className="card"; left.style.marginTop="0";
+      left.innerHTML='<div class="qTitle">'+esc(p.idiom)+'</div>';
+
+      const right=document.createElement("div");
+      right.className="card"; right.style.marginTop="0";
+      const sel=document.createElement("select");
+      sel.innerHTML = '<option value="">— choose —</option>' + shuffled.map(m=>'<option value="'+m.replaceAll('&','&amp;').replaceAll('"','&quot;')+'">'+esc(m)+'</option>').join("");
+      sel.disabled = locked;
+      if(obj && obj[String(idx)]) sel.value=obj[String(idx)];
+      sel.addEventListener("change", ()=>{
+        if(locked) return;
+        const curr = obj || {};
+        curr[String(idx)] = sel.value;
+        obj = curr;
+        S.ans[key]=JSON.stringify(curr);
+      });
+      right.appendChild(sel);
+
+      grid.appendChild(left);
+      grid.appendChild(right);
+    });
+    wrap.appendChild(grid);
+    const result=document.createElement("div");
+    result.className="small";
+    result.style.marginTop="10px";
+    result.id="idiomResult";
+    wrap.appendChild(result);
+    qbox.appendChild(wrap);
+  }
+
+  if(S.forced[key]) {
+    const n=document.createElement("div"); n.className="context";
+    n.style.borderColor="rgba(239,68,68,.35)"; n.style.background="rgba(239,68,68,.10)";
+    n.textContent="Counted as wrong: "+S.forced[key]; qbox.appendChild(n);
+  }
+}
+
+
+function markCorrectWrongForCurrent(){
+  const q=qEffNow();
+  const key="q"+S.idx;
+  const locked=!!S.lock[key];
+  if(!locked) return;
+  if(!(q.type==="mcq"||q.type==="gap"||q.type==="dialogue")) return;
+
+  const chosen = (S.ans[key]!==undefined) ? Number(S.ans[key]) : null;
+  const correct = (q.answer!==undefined && q.answer!==null) ? Number(q.answer) : null;
+
+  const opts = qbox.querySelectorAll(".opt");
+  opts.forEach((el, i)=>{
+    el.classList.remove("correct","wrong");
+    if(correct!==null && i===correct) el.classList.add("correct");
+    if(chosen!==null && i===chosen && i!==correct) el.classList.add("wrong");
+  });
+}
+function confirm(){ 
+  const q=qEffNow(); const key="q"+S.idx;
+  if(S.lock[key]) return;
+
+  if(q.type==="mcq"||q.type==="gap"||q.type==="dialogue") {
+    if(S.ans[key]===undefined){ alert("Choose an answer first."); return; }
+    S.lock[key]=true;
+    clearT(); setTimer(null);
+    render();
+    qbox.querySelectorAll("input").forEach(inp=>{ inp.disabled=true; });
+    markCorrectWrongForCurrent();
+    setMeta("Saved Q"+(S.idx+1));
+    return;
+  }
+
+  if(q.type==="idioms_match") {
+    if(!S.ans[key]){ alert("Match the idioms first."); return; }
+    let obj=null;
+    try{ obj=JSON.parse(S.ans[key]); }catch(e){ alert("Match the idioms first."); return; }
+    const total=q.pairs.length;
+    for(let i=0;i<total;i++){ if(!obj[String(i)]){ alert("Complete all idioms."); return; } }
+    let correct=0;
+    for(let i=0;i<total;i++){ if(obj[String(i)]===q.pairs[i].meaning) correct++; }
+    const res=document.getElementById("idiomResult");
+    if(res) res.textContent = "Score: "+correct+" / "+total;
+    S.lock[key]=true;
+    setMeta("Saved Q"+(S.idx+1)+" • Idioms score: "+correct+"/"+total);
+    return;
+  }
+}
+
+function forceWrong(reason){ const key="q"+S.idx; S.forced[key]=reason; S.lock[key]=true; S.ans[key]="__FORCED_WRONG__"; }
+
+function nextQ(fromTimer){ 
+  if(S.idx < S.sel.length-1){ S.idx++; render(); startT(); }
+  else { finish(); }
+}
+
+function grade(){
+  let correct=0, total=S.sel.length;
+  for(let i=0;i<total;i++){
+    const qi = S.sel[i];
+    const q = DATA.question_bank[qi];
+    const a = S.ans["q"+i];
+    if(a===undefined || a==="__FORCED_WRONG__") continue;
+
+    if(q.type==="mcq"||q.type==="gap"||q.type==="dialogue"){
+      const sh = S.shuf[String(qi)];
+      const correctIdx = sh ? Number(sh.answer) : Number(q.answer);
+      if(Number(a)===correctIdx) correct++;
+    } else if(q.type==="idioms_match"){
+      let obj=null;
+      try{ obj=JSON.parse(a); }catch(e){ obj=null; }
+      if(!obj) continue;
+      let ok=true;
+      for(let k=0;k<q.pairs.length;k++){
+        if(obj[String(k)]!==q.pairs[k].meaning){ ok=false; break; }
+      }
+      if(ok) correct++;
+    }
+  }
+  const pct= total? (correct/total):0;
+  const g = 1 + 4*pct;
+  return {correct,total,pct,grade:Math.round(g*10)/10};
+}
+
+function finish(){ 
+  clearT(); setTimer(null);
+  const r=grade();
+  finalGrade.textContent = r.grade.toFixed(1)+" / 5.0";
+  finalMeta.textContent = "Correct: "+r.correct+" / "+r.total+" • Accuracy: "+Math.round(r.pct*100)+"%";
+  securityLog.textContent = S.sec.inc.length ? S.sec.inc.join("\n") : "No incidents.";
+  S.phase="results"; show("results"); setMeta("Done");
+}
+
+// Security
+function shouldTrip(){ return S.sec.started && S.phase==="quiz" && !S.sec.locked && Date.now()>=S.sec.ignoreUntil; }
+function logInc(msg){ const t=new Date().toLocaleString(); S.sec.inc.push("["+t+"] "+msg); securityPill.textContent="Security: INCIDENT"; }
+function lock(reason){ 
+  if(!shouldTrip()) return;
+  S.sec.locked=true;
+  logInc("LOCK: "+reason);
+  forceWrong("Security violation");
+  clearT(); setTimer(null);
+  lockReason.textContent = reason + " (Question counted as wrong.)";
+  resumeCodeInput.value="";
+  lockscreen.classList.add("active");
+}
+function unlock(){ 
+  const code=resumeCodeInput.value.trim();
+  if(code!==DATA.access_code){ alert("Incorrect code."); resumeCodeInput.value=""; return; }
+  resumeCodeInput.value="";
+  lockscreen.classList.remove("active");
+  S.sec.locked=false;
+  S.sec.ignoreUntil=Date.now()+1200;
+  nextQ(false);
+}
+
+document.addEventListener("visibilitychange", ()=>{ if(!shouldTrip()) return; if(document.hidden) lock("Tab/window was sent to background."); });
+window.addEventListener("blur", ()=>{ if(!shouldTrip()) return; lock("Window lost focus."); });
+window.addEventListener("pagehide", ()=>{ if(!shouldTrip()) return; lock("Page was hidden (pagehide)."); });
+window.addEventListener("focusout", ()=>{ if(!shouldTrip()) return; if(!document.hasFocus()) lock("Focus moved away from the page."); });
+setInterval(()=>{ if(!shouldTrip()) return; if(document.hidden || !document.hasFocus()) lock("Focus/visibility check failed."); }, 250);
+
+document.addEventListener("keydown", (e)=>{
+  if(S.phase!=="quiz") return;
+  const k=(e.key||"").toLowerCase();
+  const ctrl=e.ctrlKey || e.metaKey;
+  const blocked =
+    (ctrl && ["c","v","x","p","s","u","r","w","t","n"].includes(k)) ||
+    (e.key==="F12") ||
+    (ctrl && e.shiftKey && ["i","j","c"].includes(k)) ||
+    (e.key==="PrintScreen") ||
+    (ctrl && e.shiftKey && k==="s") ||
+    (e.metaKey && e.shiftKey && ["3","4","5"].includes(k));
+  if(blocked){ e.preventDefault(); lock("Blocked shortcut / capture attempt detected."); }
+});
+document.addEventListener("contextmenu", (e)=>{ if(S.phase==="quiz") e.preventDefault(); });
+document.addEventListener("copy", (e)=>{ if(S.phase==="quiz") e.preventDefault(); });
+document.addEventListener("cut", (e)=>{ if(S.phase==="quiz") e.preventDefault(); });
+document.addEventListener("paste", (e)=>{ if(S.phase==="quiz") e.preventDefault(); });
+
+// Flow
+function reset(){ 
+  clearT(); setTimer(null);
+  S.phase="code";
+  S.sec.started=false; S.sec.locked=false; S.sec.inc=[]; S.sec.ignoreUntil=0;
+  S.sel=[]; S.idx=0; S.ans={}; S.lock={}; S.forced={};
+  S.shuf={};
+  codeInput.value=""; resumeCodeInput.value="";
+  securityPill.textContent="Security: OK";
+  setMeta("Not started");
+  show("code");
+  setTimeout(()=>{ try{ codeInput.focus(); }catch(e){} },120);
+}
+function unlockStart(){ 
+  const code=codeInput.value.trim();
+  if(code!==DATA.access_code){ alert("Incorrect code."); codeInput.value=""; codeInput.focus(); return; }
+  codeInput.value="";
+  show("start");
+  setMeta("Ready");
+}
+function startExam(){ 
+  S.sec.started=true;
+  pick();
+  S.phase="quiz";
+  show("quiz");
+  setMeta("25 random / 80");
+  render();
+  startT();
+}
+
+btnUnlock.addEventListener("click", unlockStart);
+codeInput.addEventListener("keydown", (e)=>{ if(e.key==="Enter"){ e.preventDefault(); e.stopPropagation(); unlockStart(); } });
+btnStart.addEventListener("click", startExam);
+
+btnConfirm.addEventListener("click", confirm);
+btnNext.addEventListener("click", ()=>nextQ(false));
+
+btnResume.addEventListener("click", unlock);
+resumeCodeInput.addEventListener("keydown", (e)=>{ if(e.key==="Enter"){ e.preventDefault(); e.stopPropagation(); unlock(); } });
+
+btnRestart.addEventListener("click", reset);
+btnRestart2.addEventListener("click", reset);
+
+reset();
+</script>
+</body>
+</html>
